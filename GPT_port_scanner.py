@@ -5,7 +5,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 
-
+# Dictionary of common ports and their associated services
 COMMON_PORTS = {
     20: "FTP-DATA",
     21: "FTP",
@@ -45,11 +45,14 @@ COMMON_PORTS = {
 def resolve_target(target):
     """Return the best socket address for a hostname or IP."""
     try:
+        # Get socket address info for TCP connections
         info = socket.getaddrinfo(target, None, type=socket.SOCK_STREAM)
     except socket.gaierror:
-        return None
+        return None # Target could not be resolved
 
     family, _, _, _, sockaddr = info[0]
+
+    # Return structured address info for scanning
     return {
         "family": family,
         "ip": sockaddr[0],
@@ -66,7 +69,7 @@ def parse_ports(port_expression):
         part = raw_part.strip()
         if not part:
             continue
-
+        # Handle port ranges (e.g. 1000-1010)
         if "-" in part:
             try:
                 start_text, end_text = part.split("-", 1)
@@ -76,17 +79,22 @@ def parse_ports(port_expression):
                 invalid_parts.append(part)
                 continue
 
+            # Ensure correct order
             if start > end:
                 start, end = end, start
 
             ports.update(range(start, end + 1))
         else:
+            # Handle single port
             try:
                 ports.add(int(part))
             except ValueError:
                 invalid_parts.append(part)
-
+                
+    # Filter valid TCP ports (1–65535)
     valid_ports = sorted(port for port in ports if 1 <= port <= 65535)
+
+    # Ports outside valid range
     out_of_range = sorted(port for port in ports if port < 1 or port > 65535)
 
     return valid_ports, invalid_parts, out_of_range
@@ -97,6 +105,7 @@ def guess_service(port):
         return COMMON_PORTS[port]
 
     try:
+        # Try OS service database (e.g. /etc/services)
         return socket.getservbyport(port, "tcp").upper()
     except OSError:
         return "UNKNOWN"
@@ -107,15 +116,19 @@ def grab_banner(sock, port, service, timeout):
     sock.settimeout(timeout)
 
     try:
+        # Send protocol-specific probes
         if service in {"HTTP", "HTTP-PROXY"}:
             sock.sendall(b"HEAD / HTTP/1.0\r\nHost: localhost\r\n\r\n")
         elif service in {"HTTPS", "HTTPS-ALT"}:
             return "TLS service detected; banner probing skipped"
         elif service in {"SSH", "FTP", "SMTP", "POP3", "IMAP"}:
+            # These often auto-send banners
             pass
         else:
+            # Generic probe
             sock.sendall(b"\r\n")
-
+            
+        # Receive response
         banner = sock.recv(1024)
     except socket.timeout:
         return "No banner (timeout)"
@@ -124,13 +137,16 @@ def grab_banner(sock, port, service, timeout):
 
     if not banner:
         return "No banner"
-
+        
+    # Decode raw bytes into readable text
     return banner.decode(errors="replace").strip()
 
 
 def scan_port(address, port, timeout, grab_banners):
     start_time = time.perf_counter()
     service = guess_service(port)
+
+    # Build correct connection tuple (IPv4 vs IPv6)
     connect_address = (address["ip"], port)
 
     if address["family"] == socket.AF_INET6:
@@ -139,9 +155,13 @@ def scan_port(address, port, timeout, grab_banners):
     try:
         with socket.socket(address["family"], socket.SOCK_STREAM) as sock:
             sock.settimeout(timeout)
+
+            # Try to connect to the port
             result = sock.connect_ex(connect_address)
 
             elapsed = round(time.perf_counter() - start_time, 4)
+
+            # Port is closed
             if result != 0:
                 return {
                     "port": port,
@@ -151,6 +171,7 @@ def scan_port(address, port, timeout, grab_banners):
                     "duration": elapsed,
                 }
 
+            # Port is open → optionally grab banner
             banner = grab_banner(sock, port, service, timeout) if grab_banners else ""
             elapsed = round(time.perf_counter() - start_time, 4)
             return {
@@ -161,6 +182,7 @@ def scan_port(address, port, timeout, grab_banners):
                 "duration": elapsed,
             }
     except OSError as error:
+        # Handle unexpected socket/system errors
         return {
             "port": port,
             "state": "error",
@@ -209,6 +231,7 @@ def print_summary(results, scan_duration, show_closed):
     print("                       SUMMARY")
     print("=" * 56)
 
+    # OPEN PORTS SECTION
     print("\n[OPEN PORTS]\n")
     if open_results:
         for item in open_results:
@@ -219,16 +242,19 @@ def print_summary(results, scan_duration, show_closed):
     else:
         print("No open ports found")
 
+    # CLOSED PORTS (optional)
     if show_closed:
         print("\n[CLOSED PORTS]\n")
         for item in closed_results:
             print(f" -> {item['port']}")
 
+    # ERRORS
     if error_results:
         print("\n[ERRORS]\n")
         for item in error_results:
             print(f" -> {item['port']}: {item.get('error', 'unknown error')}")
 
+    # STATS
     print("\n[SCAN STATISTICS]\n")
     print(f"Total scan time: {scan_duration:.2f}s")
     print(f"Ports scanned:   {len(results)}")
@@ -241,12 +267,14 @@ def main():
     parser = build_parser()
     args = parser.parse_args()
 
+    # Validate inputs
     if args.timeout <= 0:
         parser.error("--timeout must be greater than 0")
 
     if args.threads <= 0:
         parser.error("--threads must be greater than 0")
 
+    # Parse port input
     ports, invalid_parts, out_of_range = parse_ports(args.ports)
     if invalid_parts:
         print(f"Warning: ignored invalid port entries: {', '.join(invalid_parts)}")
@@ -255,6 +283,7 @@ def main():
     if not ports:
         parser.error("no valid ports selected")
 
+    # Resolve target hostname/IP
     address = resolve_target(args.target)
     if address is None:
         parser.error(f"could not resolve target: {args.target}")
@@ -264,30 +293,38 @@ def main():
 
     results = []
     started_at = time.perf_counter()
+
+    # Limit threads to avoid overload
     workers = min(args.threads, len(ports))
 
     try:
         with ThreadPoolExecutor(max_workers=workers) as executor:
+            
+            # Submit all scan tasks
             future_to_port = {
                 executor.submit(scan_port, address, port, args.timeout, not args.no_banners): port
                 for port in ports
             }
 
+            # Collect results as they complete
             for future in as_completed(future_to_port):
                 result = future.result()
                 results.append(result)
 
+                # Live output
                 if args.verbose or result["state"] == "open":
                     label = result["state"].upper()
                     print(f"[{label:<6}] {result['port']:>5}/tcp  {result['service']}")
     except KeyboardInterrupt:
         print("\nScan interrupted by user. Writing partial results...")
 
+     # Sort results for readability
     results.sort(key=lambda item: item["port"])
     scan_duration = time.perf_counter() - started_at
 
     print_summary(results, scan_duration, args.show_closed)
 
+    # Build JSON output
     output = {
         "target": args.target,
         "ip": address["ip"],
@@ -299,6 +336,7 @@ def main():
         "results": results,
     }
 
+    # Save results to file
     with open(args.output, "w", encoding="utf-8") as file:
         json.dump(output, file, indent=4)
 
