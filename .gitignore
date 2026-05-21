@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+.venv/
+venv/
+env/
+
+# Generated scan reports
+scan_results*.json
+*.log
+
+# Editor files
+.vscode/
+.idea/
+
+# OS files
+Thumbs.db
+.DS_Store
