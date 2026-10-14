@@ -118,3 +118,16 @@ tcp-port-scanner/
 ├── README.md
 └── .gitignore
 ```
+## Local Test Demonstration
+
+The TCP port scanner was tested against a local HTTP
+server running on 127.0.0.1.
+
+The test demonstrates:
+- Detection of an open TCP port (8000)
+- Detection of a closed TCP port (8001)
+- Successful completion without scan errors
+
+[View the local test documentation](LOCAL_TEST.md)
+
+![Local test results](images/demo-local.png)
