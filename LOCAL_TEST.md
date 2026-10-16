@@ -13,7 +13,7 @@ python -m http.server 8000 --bind 127.0.0.1
 In terminal 2, from the scanner repository folder:
 
 ```bash
-python GPT_port_scanner.py -t 127.0.0.1 -p 8000,8001 --threads 2 --timeout 1 --no-banners --show-closed -o demo-scan-results.json
+python port_scanner.py -t 127.0.0.1 -p 8000,8001 --threads 2 --timeout 1 --no-banners --show-closed -o demo-scan-results.json
 ```
 
 Stop the HTTP server using Ctrl+C.

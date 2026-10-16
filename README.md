@@ -23,16 +23,16 @@ This project uses only Python standard library modules, so no extra packages are
 ## Usage
 
 ```powershell
-python GPT_port_scanner.py -t <target> -p <ports>
+python port_scanner.py -t <target> -p <ports>
 ```
 
 Examples:
 
 ```powershell
-python GPT_port_scanner.py -t 127.0.0.1 -p 1-1000
-python GPT_port_scanner.py -t example.com -p 22,80,443
-python GPT_port_scanner.py -t 192.168.1.1 -p 20-100 --threads 200 --timeout 0.5
-python GPT_port_scanner.py -t 127.0.0.1 -p 1-100 --no-banners --show-closed
+python port_scanner.py -t 127.0.0.1 -p 1-1000
+python port_scanner.py -t example.com -p 22,80,443
+python port_scanner.py -t 192.168.1.1 -p 20-100 --threads 200 --timeout 0.5
+python port_scanner.py -t 127.0.0.1 -p 1-100 --no-banners --show-closed
 ```
 
 ## Options
@@ -114,7 +114,7 @@ Port scanning can be noisy and may violate rules on networks you do not control.
 
 ```text
 tcp-port-scanner/
-├── GPT_port_scanner.py
+├── port_scanner.py
 ├── README.md
 └── .gitignore
 ```
