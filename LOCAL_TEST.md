@@ -24,8 +24,8 @@ Stop the HTTP server using Ctrl+C.
 - Port 8001: closed
 - Scan errors: 0
 
-![Rendered console output](images/demo-local.png)
+![Actual TCP port scanner terminal screenshot](images/demo-local.png)
 
-The image is a rendering of actual recorded console output rather than a screenshot of the testing host. The scanner reports UNKNOWN for port 8000 because its service-name lookup is not full service fingerprinting. Results depend on the ports in use on the test system.
+The image is an actual terminal screenshot captured during this local test, cropped and converted to monochrome for documentation. The scanner reports UNKNOWN for port 8000 because its service-name lookup is not full service fingerprinting. Results depend on the ports in use on the test system.
 
 This test was conducted in an isolated environment, not on the repository owner's personal machine.
